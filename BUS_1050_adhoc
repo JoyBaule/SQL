@@ -1,0 +1,86 @@
+/* Total enrollment and success for BUS 1050, by section, for
+   Fall 2018, Spring 2019, Fall 2019, Spring 2020, Fall 2020.
+ */
+
+SELECT b.stvterm_desc,
+       CONCAT(ssbsect_subj_code, CONCAT(ssbsect_crse_numb, - ssbsect_seq_numb)) AS Course,
+           a.ssbsect_crn,
+           COUNT(DISTINCT c.sfrstcr_pidm) AS enrl_cnt,
+           SUM(CASE WHEN c.sfrstcr_grde_code IN ('A+','A','A-') THEN 1
+                    WHEN c.sfrstcr_grde_code IN ('B+','B','B-') THEN 1
+                    WHEN c.sfrstcr_grde_code IN ('C+','C','S')  THEN 1
+                    ELSE 0
+                    END) AS success_cmpltd
+      FROM ssbsect a
+INNER JOIN stvterm b
+        ON a.ssbsect_term_code = b.stvterm_code
+ LEFT JOIN sfrstcr c
+        ON a.ssbsect_term_code = c.sfrstcr_term_code
+       AND a.ssbsect_crn = c.sfrstcr_crn
+INNER JOIN stvrsts d
+        ON c.sfrstcr_rsts_code = d.stvrsts_code
+     WHERE a.ssbsect_term_code IN ('202040', '201940', '201840', '202020', '201920')
+       AND a.ssbsect_ssts_code = 'A'
+       AND a.ssbsect_enrl > 0
+       AND d.stvrsts_incl_sect_enrl = 'Y'
+       AND CONCAT(a.ssbsect_subj_code, a.ssbsect_crse_numb) IN (
+             'BUS1050')
+ GROUP BY b.stvterm_desc,
+           a.ssbsect_subj_code,
+           a.ssbsect_crse_numb,
+           a.ssbsect_seq_numb,
+           a.ssbsect_crn;
+
+
+/* Start of cohort data.
+   Enrollment in BUS 1050 by student. Final Grade where applicable (Fall 2020 in progress).
+   Declared major and major.
+
+   Need to add:
+
+        1. Fall 18-19 cohort of enrolled students that were in BUS 1050 and their enrollment
+           status for all semesters after.
+
+        2. Spring 19-20 cohort of enrolled students and their enrollment status in all semesters after.
+
+        3. If available, all cohorts cumulative GPA, College of Business GPA (Is this possible?)
+           When did they register for classes date, total credits, total credits within major and declared major.
+ */
+
+SELECT a.sfrstcr_term_code,
+          CONCAT(ssbsect_subj_code, CONCAT(ssbsect_crse_numb, - ssbsect_seq_numb)) AS Course,
+          a.sfrstcr_pidm,
+          a.sfrstcr_add_date AS RegistrationDate,
+          a.sfrstcr_rsts_code,
+          b.stvrsts_desc,
+          a.sfrstcr_credit_hr,
+          a.sfrstcr_grde_code,
+          a.sfrstcr_levl_code,
+          c.ssbsect_crn,
+          e.sgbstdn_coll_code_1,
+          e.sgbstdn_majr_code_1,
+          g.stvmajr_desc,
+          h.shrtgpa_gpa
+     FROM sfrstcr a
+LEFT JOIN stvrsts b
+       ON a.sfrstcr_rsts_code = b.stvrsts_code
+LEFT JOIN ssbsect c
+       ON a.sfrstcr_term_code = c.ssbsect_term_code
+      AND a.sfrstcr_crn = c.ssbsect_crn
+LEFT JOIN stvlevl d
+       ON a.sfrstcr_levl_code = d.stvlevl_code
+LEFT JOIN sgbstdn e
+       ON a.sfrstcr_pidm  = e.sgbstdn_pidm
+LEFT JOIN spriden f
+       ON a.sfrstcr_pidm = f.spriden_pidm
+LEFT JOIN stvmajr g
+       ON e.sgbstdn_majr_code_1 = g.stvmajr_code
+LEFT JOIN shrtgpa h
+       ON a.sfrstcr_pidm = h.shrtgpa_pidm
+      AND a.sfrstcr_term_code = h.shrtgpa_term_code
+      WHERE a.sfrstcr_rsts_code IN ('RE','RW')
+        AND CONCAT(c.ssbsect_subj_code, c.ssbsect_crse_numb) IN (
+             'BUS1050')
+      AND a.sfrstcr_term_code IN ('202040', '201940', '201840', '202020', '201920')
+      AND a.sfrstcr_camp_code <> 'XXX'
+      AND f.spriden_change_ind IS NULL;
